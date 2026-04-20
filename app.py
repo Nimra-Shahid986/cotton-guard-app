@@ -625,49 +625,46 @@ YOUR RULES:
 6. Never make up information — stick to what you know about cotton diseases"""
 
 
-def get_gemini_response(user_msg, chat_history):
-    """Get AI response from Google Gemini API."""
+def get_ai_response(user_msg, chat_history):
+    """Get AI response from Groq API (free, fast)."""
     import requests
-    import json
 
-    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    api_key = st.secrets.get("GROQ_API_KEY", "")
     if not api_key:
-        return "⚠️ Gemini API key not configured. Please add GEMINI_API_KEY to your Streamlit secrets."
+        return "⚠️ API key not configured. Please add GROQ_API_KEY to your Streamlit secrets."
 
-    # Build conversation history for Gemini
-    contents = []
-    for msg in chat_history[-10:]:  # Last 10 messages for context
-        role = "user" if msg["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
-    
-    # Add current message
-    contents.append({"role": "user", "parts": [{"text": user_msg}]})
+    # Build conversation history
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for msg in chat_history[-10:]:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": user_msg})
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-    
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
     payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": contents,
-        "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 500,
-        }
+        "model": "llama-3.3-70b-versatile",
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 500,
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=15)
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
         data = response.json()
-        
-        if "candidates" in data and len(data["candidates"]) > 0:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+
+        if "choices" in data and len(data["choices"]) > 0:
+            return data["choices"][0]["message"]["content"]
         elif "error" in data:
             return f"⚠️ API Error: {data['error'].get('message', 'Unknown error')}"
         else:
             return "Sorry, I couldn't generate a response. Please try again."
     except requests.exceptions.Timeout:
         return "⚠️ Response timed out. Please try again."
-    except Exception as e:
-        return f"⚠️ Connection error. Please check your internet and try again."
+    except Exception:
+        return "⚠️ Connection error. Please check your internet and try again."
 
 
 # ─── App Header ────────────────────────────────────────────────────────────
@@ -901,6 +898,6 @@ with col_chat:
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         with st.spinner("Thinking..."):
-            response = get_gemini_response(user_input, st.session_state.chat_history)
+            response = get_ai_response(user_input, st.session_state.chat_history)
         st.session_state.chat_history.append({"role": "assistant", "content": response})
         st.rerun()
