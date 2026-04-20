@@ -315,9 +315,9 @@ DATASET_INFO = {
     "SAR-CLD 2024 — 7 Classes": {
         "classes": SAR_CLD_CLASSES,
         "model_file": "models/swin_t_best.pt",
-        "architecture": "Swin Transformer (Swin-T)",
+        "architecture": "LDASN (Lightweight Dynamic Attention)",
         "arch_key": "Swin_T",
-        "img_size": 224,
+        "img_size": 64,
         "description": "SAR-CLD 2024 dataset with 7 cotton leaf disease classes. Best performer: Swin Transformer.",
     },
     "Cotton Leaf Disease — 4 Classes": {
@@ -398,6 +398,145 @@ DISEASE_INFO = {
 }
 
 
+# ─── Custom LDASN Architecture (SAR-CLD 2024 Model) ───────────────────────
+class DepthwiseSeparableConv(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, stride=1, padding=0):
+        super().__init__()
+        self.dw = nn.Conv2d(in_ch, in_ch, kernel_size, stride, padding, groups=in_ch, bias=False)
+        self.pw = nn.Conv2d(in_ch, out_ch, 1, bias=False)
+        self.bn = nn.BatchNorm2d(out_ch)
+
+    def forward(self, x):
+        return self.bn(self.pw(self.dw(x)))
+
+
+class MultiScaleExtractor(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, 32, 3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(32),
+        )
+        self.scale1 = nn.Sequential(
+            DepthwiseSeparableConv(32, 64, 3, stride=2, padding=1),
+            DepthwiseSeparableConv(64, 64, 3, stride=1, padding=1),
+        )
+        self.scale2 = nn.Sequential(
+            DepthwiseSeparableConv(32, 64, 5, stride=2, padding=2),
+            DepthwiseSeparableConv(64, 64, 5, stride=1, padding=2),
+        )
+        self.merge_se = nn.ModuleDict({
+            'fc': nn.Sequential(
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten(),
+                nn.Linear(128, 8),
+                nn.ReLU(),
+                nn.Linear(8, 128),
+                nn.Sigmoid(),
+            )
+        })
+        self.proj = nn.Sequential(
+            nn.Conv2d(128, 128, 1, bias=False),
+            nn.BatchNorm2d(128),
+        )
+        self.shallow = nn.Sequential(
+            DepthwiseSeparableConv(32, 128, 1, stride=1, padding=0),
+        )
+
+    def forward(self, x):
+        stem = F.relu(self.stem(x))
+        s1 = F.relu(self.scale1(stem))
+        s2 = F.relu(self.scale2(stem))
+        merged = torch.cat([s1, s2], dim=1)
+        se = self.merge_se['fc'](merged).unsqueeze(-1).unsqueeze(-1)
+        merged = merged * se
+        merged = F.relu(self.proj(merged))
+        return merged, stem
+
+
+class PatchSelector(nn.Module):
+    def __init__(self, feat_dim=128, embed_dim=256, num_patches=49):
+        super().__init__()
+        self.saliency = nn.Conv2d(feat_dim, 1, 1)
+        self.proj = nn.Linear(32768, embed_dim)  # 128 * 256 (16x16 feature map)
+        self.pos_emb = nn.Embedding(num_patches, embed_dim)
+        self.register_buffer('pos_ids', torch.arange(num_patches))
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        sal = torch.sigmoid(self.saliency(x))
+        x_weighted = x * sal
+        tokens = x_weighted.flatten(2).transpose(1, 2)
+        tokens = tokens.reshape(B, -1)
+        tokens = self.proj(tokens).unsqueeze(1)
+        pos = self.pos_emb(self.pos_ids).unsqueeze(0)
+        N = min(tokens.shape[1], pos.shape[1])
+        tokens = tokens[:, :N] + pos[:, :N]
+        return tokens
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, dim=256, heads=8, mlp_ratio=2):
+        super().__init__()
+        self.norm1 = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(dim, heads, batch_first=True)
+        self.norm2 = nn.LayerNorm(dim)
+        mlp_dim = dim * mlp_ratio
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, mlp_dim),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(mlp_dim, dim),
+        )
+
+    def forward(self, x):
+        xn = self.norm1(x)
+        x = x + self.attn(xn, xn, xn)[0]
+        x = x + self.mlp(self.norm2(x))
+        return x
+
+
+class LDASNTransformer(nn.Module):
+    def __init__(self, dim=256, depth=4, heads=8):
+        super().__init__()
+        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
+        self.blocks = nn.ModuleList([TransformerBlock(dim, heads) for _ in range(depth)])
+        self.norm = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        B = x.shape[0]
+        cls = self.cls_token.expand(B, -1, -1)
+        x = torch.cat([cls, x], dim=1)
+        for blk in self.blocks:
+            x = blk(x)
+        return self.norm(x[:, 0])
+
+
+class ClassificationHead(nn.Module):
+    def __init__(self, dim=256, num_classes=7):
+        super().__init__()
+        self.temperature = nn.Parameter(torch.ones(1))
+        self.fc = nn.Linear(dim, num_classes)
+
+    def forward(self, x):
+        return self.fc(x) / self.temperature
+
+
+class LDASN(nn.Module):
+    def __init__(self, num_classes=7):
+        super().__init__()
+        self.extractor = MultiScaleExtractor()
+        self.selector = PatchSelector(feat_dim=128, embed_dim=256, num_patches=49)
+        self.transformer = LDASNTransformer(dim=256, depth=4, heads=8)
+        self.head = ClassificationHead(dim=256, num_classes=num_classes)
+
+    def forward(self, x):
+        features, _ = self.extractor(x)
+        tokens = self.selector(features)
+        cls_out = self.transformer(tokens)
+        return self.head(cls_out)
+
+
 # ─── Model Loading ─────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model(arch_key, model_path, num_classes):
@@ -405,8 +544,7 @@ def load_model(arch_key, model_path, num_classes):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if arch_key == "Swin_T":
-        model = models.swin_t(weights=None)
-        model.head = nn.Linear(model.head.in_features, num_classes)
+        model = LDASN(num_classes=num_classes)
     elif arch_key == "ConvNeXt_T":
         model = models.convnext_tiny(weights=None)
         in_f = model.classifier[2].in_features
@@ -414,7 +552,7 @@ def load_model(arch_key, model_path, num_classes):
     else:
         raise ValueError(f"Unknown architecture: {arch_key}")
 
-    state_dict = torch.load(model_path, map_location=device, weights_only=True)
+    state_dict = torch.load(model_path, map_location=device, weights_only=False)
     model.load_state_dict(state_dict)
     model.to(device)
     model.eval()
