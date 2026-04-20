@@ -643,7 +643,7 @@ def get_gemini_response(user_msg, chat_history):
     # Add current message
     contents.append({"role": "user", "parts": [{"text": user_msg}]})
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={api_key}"
     
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
