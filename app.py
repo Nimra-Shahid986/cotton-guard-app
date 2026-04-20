@@ -20,7 +20,7 @@ st.set_page_config(page_title="Cotton Guard — Leaf Disease Detection", page_ic
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
-.stApp { background: #faf8f4; font-family: 'Nunito', sans-serif; }
+.stApp { background: #e8efe2; font-family: 'Nunito', sans-serif; }
 .app-header { text-align:center; padding:1.5rem 0 0.5rem; }
 .app-header h1 { font-family:'DM Serif Display',serif; font-size:2.6rem; color:#2d5016; margin:0; }
 .app-header .subtitle { color:#7a8b6e; font-size:0.95rem; margin-top:0.2rem; }
