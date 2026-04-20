@@ -591,162 +591,83 @@ def predict(model, image, device, class_names, img_size=224):
     }
 
 
-# ─── Chatbot Logic ─────────────────────────────────────────────────────────
-def get_chatbot_response(user_msg):
-    """Simple rule-based chatbot about the application."""
-    msg = user_msg.lower().strip()
+# ─── AI Chatbot Logic (Google Gemini) ──────────────────────────────────────
+SYSTEM_PROMPT = """You are Cotton Guard Assistant — an AI expert on cotton leaf diseases built into a disease detection app for Pakistani cotton farmers.
 
-    # Greetings
-    if any(w in msg for w in ["hello", "hi", "hey", "assalam", "salam", "greet"]):
-        return ("Hello! 👋 I'm Cotton Guard Assistant. I can help you understand cotton leaf diseases, "
-                "how this app works, and what to do if your crop is affected. Ask me anything!")
+ABOUT THIS APP:
+- Cotton Guard is a deep learning-based cotton leaf disease detection system
+- Users upload a cotton leaf photo, select a dataset, and get instant diagnosis with confidence scores, disease info, and treatment recommendations
 
-    # What is this app
-    if any(w in msg for w in ["what is this", "what does this", "about this app", "what app", "purpose"]):
-        return ("Cotton Guard is a deep learning-based system that detects diseases in cotton leaves. "
-                "Simply upload a photo of a cotton leaf, choose a dataset model, and get an instant diagnosis "
-                "with confidence scores, disease details, and treatment recommendations. "
-                "It's designed to help Pakistani cotton farmers protect their crops!")
+MODELS & DATASETS:
+- SAR-CLD 2024 dataset (7 classes): Bacterial Blight, Curl Virus, Healthy Leaf, Herbicide Growth Damage, Leaf Hopper Jassids, Leaf Redding, Leaf Variegation. Best model: LDASN (Lightweight Dynamic Attention Selection Network) — a custom architecture with multi-scale feature extractor, saliency-based patch selector, and transformer blocks. Input size: 64×64. Accuracy: ~98.4%
+- Cotton Leaf Disease dataset (4 classes): Bacterial Blight, Curl Virus, Fussarium Wilt, Healthy. Best model: ConvNeXt Tiny. Input size: 224×224. Accuracy: ~97.7%
 
-    # How it works
-    if any(w in msg for w in ["how does it work", "how it work", "how to use", "how do i"]):
-        return ("It's simple!\n\n"
-                "1️⃣ **Upload** a clear photo of a cotton leaf\n"
-                "2️⃣ **Select** a dataset model (SAR-CLD 2024 or Cotton Leaf Disease)\n"
-                "3️⃣ **Click** 'Analyze Leaf' and get results in seconds\n\n"
-                "The system uses deep learning models (Swin Transformer & ConvNeXt) trained on real cotton disease images.")
+TRAINING DETAILS:
+- Both models use: 80/20 stratified split, Focal Loss with class weights, AdamW optimizer (lr=3e-4), Cosine Annealing LR, data augmentation (flips, rotations, color jitter), early stopping (patience=10), WeightedRandomSampler, ImageNet normalization
+- Metrics: Balanced Accuracy, Weighted F1, MCC, Cohen's Kappa
 
-    # Models / architecture
-    if any(w in msg for w in ["model", "architect", "swin", "convnext", "neural", "deep learning", "training", "how built", "how is it built"]):
-        return ("This app uses two state-of-the-art deep learning models:\n\n"
-                "🔹 **Swin Transformer (Swin-T)** — Best performer on SAR-CLD 2024 dataset (7 classes). "
-                "Uses shifted window attention for efficient image recognition.\n\n"
-                "🔹 **ConvNeXt Tiny (ConvNeXt-T)** — Best performer on Cotton Leaf Disease dataset (4 classes). "
-                "A modernized ConvNet that rivals Transformers.\n\n"
-                "Both models were pre-trained on ImageNet and fine-tuned with:\n"
-                "- 80/20 stratified train/val split\n"
-                "- Focal Loss with class weights for handling imbalance\n"
-                "- AdamW optimizer with Cosine Annealing LR\n"
-                "- Data augmentation (flips, rotations, color jitter)\n"
-                "- Early stopping with patience of 10 epochs")
+DISEASE KNOWLEDGE:
+- Bacterial Blight: Severity High. Angular water-soaked lesions turning brown. Treatment: copper-based bactericides, resistant varieties. Prevention: disease-free seeds, crop rotation.
+- Curl Virus (CLCuV): Severity Very High. Transmitted by whiteflies, leaf curling, stunted growth. Treatment: control whiteflies (imidacloprid, acetamiprid). Prevention: resistant varieties, early sowing.
+- Fussarium Wilt: Severity High. Soil-borne fungal disease blocking water vessels. Treatment: remove infected plants, soil solarization, Trichoderma biocontrol. Prevention: resistant varieties, crop rotation 3+ years.
+- Herbicide Growth Damage: Severity Medium. Abnormal leaf growth from herbicide drift. Treatment: growth regulators, adequate irrigation. Prevention: proper spraying techniques, buffer zones.
+- Leaf Hopper Jassids: Severity Medium-High. Jassids suck cell sap causing yellowing. Treatment: systemic insecticides (thiamethoxam). Prevention: resistant varieties, maintain natural predators.
+- Leaf Redding: Severity Medium. Reddening due to nutrient deficiency (magnesium). Treatment: foliar magnesium sulphate. Prevention: soil testing, balanced NPK.
+- Leaf Variegation: Severity Medium. Irregular color patches from viral infection. Treatment: remove affected plants, control vectors. Prevention: virus-free material, field hygiene.
+- Healthy Leaf: No symptoms. Continue regular crop management.
 
-    # Datasets
-    if any(w in msg for w in ["dataset", "sar-cld", "data", "classes", "class"]):
-        return ("Two datasets are supported:\n\n"
-                "📊 **SAR-CLD 2024** — 7 classes:\n"
-                "Bacterial Blight, Curl Virus, Healthy Leaf, Herbicide Growth Damage, "
-                "Leaf Hopper Jassids, Leaf Redding, Leaf Variegation\n\n"
-                "📊 **Cotton Leaf Disease** — 4 classes:\n"
-                "Bacterial Blight, Curl Virus, Fussarium Wilt, Healthy")
+YOUR RULES:
+1. ONLY answer questions related to: cotton diseases, cotton farming, this app, its models, treatments, prevention, and cotton agriculture
+2. If someone asks about anything unrelated (politics, general knowledge, coding, etc.), politely redirect them: "I'm specialized in cotton leaf diseases and this app. I can help you with disease identification, treatments, prevention tips, or how to use Cotton Guard."
+3. Keep responses concise and farmer-friendly
+4. You can respond in Urdu/Roman Urdu if the user writes in Urdu
+5. Always be helpful and encouraging to farmers
+6. Never make up information — stick to what you know about cotton diseases"""
 
-    # Specific diseases
-    if "bacterial blight" in msg:
-        info = DISEASE_INFO["Bacterial Blight"]
-        return (f"**Bacterial Blight** (Severity: {info['severity']})\n\n"
-                f"📋 {info['description']}\n\n"
-                f"🔍 **Symptoms:** {info['symptoms']}\n\n"
-                f"💊 **Treatment:** {info['treatment']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}")
 
-    if "curl virus" in msg or "clcuv" in msg:
-        info = DISEASE_INFO["Curl Virus"]
-        return (f"**Curl Virus (CLCuV)** (Severity: {info['severity']})\n\n"
-                f"📋 {info['description']}\n\n"
-                f"🔍 **Symptoms:** {info['symptoms']}\n\n"
-                f"💊 **Treatment:** {info['treatment']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}")
+def get_gemini_response(user_msg, chat_history):
+    """Get AI response from Google Gemini API."""
+    import requests
+    import json
 
-    if "fussarium" in msg or "fusarium" in msg or "wilt" in msg:
-        info = DISEASE_INFO["Fussarium Wilt"]
-        return (f"**Fussarium Wilt** (Severity: {info['severity']})\n\n"
-                f"📋 {info['description']}\n\n"
-                f"🔍 **Symptoms:** {info['symptoms']}\n\n"
-                f"💊 **Treatment:** {info['treatment']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}")
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    if not api_key:
+        return "⚠️ Gemini API key not configured. Please add GEMINI_API_KEY to your Streamlit secrets."
 
-    if "herbicide" in msg:
-        info = DISEASE_INFO["Herbicide Growth Damage"]
-        return (f"**Herbicide Growth Damage** (Severity: {info['severity']})\n\n"
-                f"📋 {info['description']}\n\n"
-                f"🔍 **Symptoms:** {info['symptoms']}\n\n"
-                f"💊 **Treatment:** {info['treatment']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}")
+    # Build conversation history for Gemini
+    contents = []
+    for msg in chat_history[-10:]:  # Last 10 messages for context
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+    
+    # Add current message
+    contents.append({"role": "user", "parts": [{"text": user_msg}]})
 
-    if "jassid" in msg or "hopper" in msg or "leaf hopper" in msg:
-        info = DISEASE_INFO["Leaf Hopper Jassids"]
-        return (f"**Leaf Hopper Jassids** (Severity: {info['severity']})\n\n"
-                f"📋 {info['description']}\n\n"
-                f"🔍 **Symptoms:** {info['symptoms']}\n\n"
-                f"💊 **Treatment:** {info['treatment']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    
+    payload = {
+        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": contents,
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 500,
+        }
+    }
 
-    if "redding" in msg or "reddening" in msg:
-        info = DISEASE_INFO["Leaf Redding"]
-        return (f"**Leaf Redding** (Severity: {info['severity']})\n\n"
-                f"📋 {info['description']}\n\n"
-                f"🔍 **Symptoms:** {info['symptoms']}\n\n"
-                f"💊 **Treatment:** {info['treatment']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}")
-
-    if "variegation" in msg:
-        info = DISEASE_INFO["Leaf Variegation"]
-        return (f"**Leaf Variegation** (Severity: {info['severity']})\n\n"
-                f"📋 {info['description']}\n\n"
-                f"🔍 **Symptoms:** {info['symptoms']}\n\n"
-                f"💊 **Treatment:** {info['treatment']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}")
-
-    if "healthy" in msg:
-        return ("Great news! A **healthy** cotton leaf shows no signs of disease. "
-                "Keep up good practices:\n\n"
-                "✅ Regular field scouting\n"
-                "✅ Balanced fertilization\n"
-                "✅ Proper irrigation scheduling\n"
-                "✅ Integrated pest management")
-
-    # Accuracy / performance
-    if any(w in msg for w in ["accuracy", "performance", "how good", "reliable", "result"]):
-        return ("Both models achieve excellent performance:\n\n"
-                "🏆 **Swin-T on SAR-CLD 2024:** ~98.4% accuracy, 0.98 MCC\n"
-                "🏆 **ConvNeXt-T on Cotton Leaf Disease:** ~97.7% accuracy, 0.97 MCC\n\n"
-                "Metrics include balanced accuracy, weighted F1, Cohen's Kappa, and Matthews Correlation Coefficient. "
-                "Results were validated using an 80/20 stratified split.")
-
-    # Treatment general
-    if any(w in msg for w in ["treatment", "cure", "medicine", "spray", "pesticide", "fix"]):
-        return ("Treatment depends on the specific disease. Upload a leaf photo to get a diagnosis, "
-                "and I'll provide targeted treatment recommendations.\n\n"
-                "General tips:\n"
-                "🔹 For bacterial diseases: copper-based sprays\n"
-                "🔹 For viral diseases: vector control (whitefly management)\n"
-                "🔹 For fungal diseases: fungicides + soil management\n"
-                "🔹 For pest damage: appropriate insecticides\n\n"
-                "Ask me about any specific disease by name for detailed treatment info!")
-
-    # Help
-    if any(w in msg for w in ["help", "can you", "what can"]):
-        return ("I can help with:\n\n"
-                "🌿 **Disease Info** — Ask about any cotton disease (e.g., 'Tell me about curl virus')\n"
-                "🔬 **App Details** — How the models work, datasets used, accuracy\n"
-                "💊 **Treatment** — Recommendations for specific diseases\n"
-                "📖 **Usage** — How to use this app effectively\n\n"
-                "Just type your question!")
-
-    # Thank you
-    if any(w in msg for w in ["thank", "thanks", "shukriya"]):
-        return "You're welcome! 😊 Feel free to ask if you need anything else. Happy farming! 🌱"
-
-    # Bye
-    if any(w in msg for w in ["bye", "goodbye", "khuda hafiz"]):
-        return "Goodbye! Take care of your cotton crops! 🌿 Come back anytime you need help."
-
-    # Default
-    return ("I'm here to help with cotton leaf disease detection! You can ask me about:\n\n"
-            "• Specific diseases (e.g., 'What is curl virus?')\n"
-            "• How this app works\n"
-            "• Treatment recommendations\n"
-            "• Model details and accuracy\n\n"
-            "Try asking something specific! 😊")
+    try:
+        response = requests.post(url, json=payload, timeout=15)
+        data = response.json()
+        
+        if "candidates" in data and len(data["candidates"]) > 0:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        elif "error" in data:
+            return f"⚠️ API Error: {data['error'].get('message', 'Unknown error')}"
+        else:
+            return "Sorry, I couldn't generate a response. Please try again."
+    except requests.exceptions.Timeout:
+        return "⚠️ Response timed out. Please try again."
+    except Exception as e:
+        return f"⚠️ Connection error. Please check your internet and try again."
 
 
 # ─── App Header ────────────────────────────────────────────────────────────
@@ -979,6 +900,7 @@ with col_chat:
     user_input = st.chat_input("Ask about cotton diseases...", key="chat_input")
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        response = get_chatbot_response(user_input)
+        with st.spinner("Thinking..."):
+            response = get_gemini_response(user_input, st.session_state.chat_history)
         st.session_state.chat_history.append({"role": "assistant", "content": response})
         st.rerun()
