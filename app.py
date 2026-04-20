@@ -142,7 +142,7 @@ APP: Cotton Guard detects cotton leaf diseases via deep learning. Users upload l
 MODELS: SAR-CLD 2024 (7 classes, LDASN, 64x64, ~98.4% acc) | Cotton Leaf Disease (4 classes, ConvNeXt-T, 224x224, ~97.7% acc).
 TRAINING: 80/20 split, Focal Loss, AdamW, Cosine LR, augmentation, early stopping.
 DISEASES: Bacterial Blight (High), Curl Virus/CLCuV (Very High), Fussarium Wilt (High), Herbicide Damage (Medium), Jassids (Medium-High), Leaf Redding (Medium), Leaf Variegation (Medium).
-RULES: Only answer about cotton diseases/farming/this app. Redirect unrelated questions politely. Be concise, farmer-friendly. Support Urdu/Roman Urdu. Never make up info."""
+RULES: Only answer about cotton diseases/farming/this app. Redirect unrelated questions politely. Be concise, farmer-friendly. ALWAYS respond in English by default. Only respond in Urdu/Roman Urdu if the user explicitly asks you to write in Urdu or writes their message in Urdu. Never make up info."""
 
 def get_ai_response(user_msg, chat_history):
     import requests
