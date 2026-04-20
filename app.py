@@ -223,7 +223,7 @@ if analyze and uploaded_file:
         with c2:
             st.markdown('<div class="earth-card"><div class="earth-card-header">Class Probabilities</div>', unsafe_allow_html=True)
             for cn,p in sorted(result["probabilities"].items(), key=lambda x:-x[1]):
-                bc2 = "#2d5016" if cn==pc else "#d4dccb"
+                bc2 = "#2d5016" if cn==pc else "#8b9e78"
                 st.markdown(f'<div class="prob-item"><div class="prob-name">{cn}</div><div class="prob-bar-bg"><div class="prob-bar-fill" style="width:{p*100:.1f}%;background:{bc2}"></div></div><div class="prob-pct">{p*100:.1f}%</div></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="earth-card"><div class="earth-card-header">⚡ Performance</div><div class="metric-row"><div class="metric-card"><div class="metric-label">Inference</div><div class="metric-value">{result["inference_time_ms"]:.1f}ms</div></div><div class="metric-card"><div class="metric-label">Model</div><div class="metric-value">{ds["arch_key"]}</div></div><div class="metric-card"><div class="metric-label">Original</div><div class="metric-value">{image.size[0]}×{image.size[1]}</div></div><div class="metric-card"><div class="metric-label">Dataset</div><div class="metric-value">{dataset_choice.split("—")[0].strip()}</div></div></div></div>', unsafe_allow_html=True)
