@@ -25,33 +25,35 @@ st.markdown("""
 .app-header h1 { font-family:'DM Serif Display',serif; font-size:2.6rem; color:#2d5016; margin:0; }
 .app-header .subtitle { color:#7a8b6e; font-size:0.95rem; margin-top:0.2rem; }
 .header-divider { width:80px; height:3px; background:linear-gradient(90deg,#8b6914,#2d5016,#8b6914); margin:0.8rem auto 1.5rem; border-radius:2px; }
-.earth-card { background:#dfe8d6; border:1px solid #e8e2d6; border-radius:14px; padding:1.4rem; margin-bottom:1rem; box-shadow:0 2px 12px rgba(45,80,22,0.06); }
-.earth-card-header { font-family:'Fira Code',monospace; font-size:0.68rem; font-weight:500; color:#8b6914; text-transform:uppercase; letter-spacing:2.5px; margin-bottom:0.8rem; padding-bottom:0.5rem; border-bottom:1px solid #f0ebe0; }
-.prediction-box { background:linear-gradient(135deg,#f0f7ec,#e8f5e0); border:1px solid #a8c99b; border-left:4px solid #2d5016; border-radius:12px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+.earth-card { background:#d9e4cf; border:1px solid #b8c9a8; border-radius:14px; padding:1.4rem; margin-bottom:1rem; box-shadow:0 2px 12px rgba(45,80,22,0.08); }
+.earth-card-header { font-family:'Fira Code',monospace; font-size:0.68rem; font-weight:500; color:#8b6914; text-transform:uppercase; letter-spacing:2.5px; margin-bottom:0.8rem; padding-bottom:0.5rem; border-bottom:1px solid #c5d4b5; }
+.prediction-box { background:linear-gradient(135deg,#c8ddb8,#b8d0a5); border:1px solid #8baf72; border-left:4px solid #2d5016; border-radius:12px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
 .prediction-label { font-size:0.68rem; font-weight:700; color:#2d5016; text-transform:uppercase; letter-spacing:2.5px; }
 .prediction-name { font-family:'DM Serif Display',serif; font-size:1.8rem; color:#1a3a0a; margin:0.3rem 0 0.1rem; }
-.prediction-index { font-size:0.82rem; color:#7a8b6e; }
-.disease-box { background:linear-gradient(135deg,#fef6e8,#fdf0d8); border:1px solid #d4a843; border-left:4px solid #8b6914; border-radius:12px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+.prediction-index { font-size:0.82rem; color:#5a6650; }
+.disease-box { background:linear-gradient(135deg,#efe0c0,#e8d5a8); border:1px solid #d4a843; border-left:4px solid #8b6914; border-radius:12px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
 .disease-label { font-size:0.68rem; font-weight:700; color:#8b6914; text-transform:uppercase; letter-spacing:2.5px; }
 .confidence-section { text-align:center; padding:0.8rem 0; }
 .confidence-pct { font-family:'DM Serif Display',serif; font-size:2.8rem; line-height:1; }
 .metric-row { display:flex; gap:0.7rem; flex-wrap:wrap; margin:0.8rem 0; }
-.metric-card { flex:1; min-width:110px; background:#d4dccb; border:1px solid #e8e2d6; border-radius:10px; padding:0.7rem 0.5rem; text-align:center; }
+.metric-card { flex:1; min-width:110px; background:#cddabe; border:1px solid #b8c9a8; border-radius:10px; padding:0.7rem 0.5rem; text-align:center; }
 .metric-card .metric-label { font-size:0.6rem; color:#8b6914; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
 .metric-card .metric-value { font-size:0.95rem; font-weight:700; color:#2d3a1e; margin-top:0.15rem; font-family:'Fira Code',monospace; }
 .prob-item { display:flex; align-items:center; margin:0.45rem 0; gap:0.7rem; }
-.prob-name { width:170px; font-size:0.8rem; color:#4a5540; font-weight:600; text-align:right; flex-shrink:0; }
-.prob-bar-bg { flex:1; height:10px; background:#f0ebe0; border-radius:5px; overflow:hidden; }
+.prob-name { width:170px; font-size:0.8rem; color:#3a4a30; font-weight:600; text-align:right; flex-shrink:0; }
+.prob-bar-bg { flex:1; height:10px; background:#c5d4b5; border-radius:5px; overflow:hidden; }
 .prob-bar-fill { height:100%; border-radius:5px; transition:width 0.5s ease; }
-.prob-pct { width:48px; font-size:0.75rem; color:#7a8b6e; font-family:'Fira Code',monospace; text-align:right; flex-shrink:0; }
-.info-card { background:#faf8f4; border:1px solid #e8e2d6; border-radius:10px; padding:1rem 1.2rem; margin:0.5rem 0; }
+.prob-pct { width:48px; font-size:0.75rem; color:#5a6650; font-family:'Fira Code',monospace; text-align:right; flex-shrink:0; }
+.info-card { background:#cddabe; border:1px solid #b8c9a8; border-radius:10px; padding:1rem 1.2rem; margin:0.5rem 0; }
 .info-card h4 { color:#2d5016; font-size:0.88rem; margin:0 0 0.35rem 0; font-weight:700; }
-.info-card p { color:#5a6650; font-size:0.82rem; margin:0; line-height:1.6; }
+.info-card p { color:#3a4a30; font-size:0.82rem; margin:0; line-height:1.6; }
 .info-card-warn h4 { color:#8b6914; }
-div[data-testid="stFileUploader"] { background:#dfe8d6; border:2px dashed #c9bfa6; border-radius:14px; padding:1rem; }
+div[data-testid="stFileUploader"] { background:#d9e4cf; border:2px dashed #a8b898; border-radius:14px; padding:1rem; }
 div[data-testid="stFileUploader"]:hover { border-color:#8b6914; }
 section[data-testid="stSidebar"] { background:#2d3a1e !important; }
 section[data-testid="stSidebar"] .stMarkdown p, section[data-testid="stSidebar"] .stMarkdown li { color:#d4dccb !important; }
+div[data-testid="stSelectbox"] > div > div { background:#d9e4cf !important; border-color:#b8c9a8 !important; }
+div[data-testid="stMainBlockContainer"] { background:#e8efe2 !important; }
 .stSelectbox label { color:#5a6650 !important; font-family:'Fira Code',monospace !important; font-size:0.68rem !important; text-transform:uppercase; letter-spacing:2px; }
 .stButton > button[kind="primary"] { background:linear-gradient(135deg,#2d5016,#3d6b20) !important; color:white !important; border:none !important; border-radius:10px !important; font-weight:700 !important; font-size:1rem !important; }
 .stButton > button[kind="primary"]:hover { background:linear-gradient(135deg,#3d6b20,#4a8028) !important; }
